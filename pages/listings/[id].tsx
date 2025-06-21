@@ -65,8 +65,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
       },
     });
 
-    // @ts-expect-error
-    const userId = session?.user.id;
+    const userId = session?.user?.id;
 
     // Check if the session user has already sent a message to this listing
     const userAlreadySentMessage = listingInfo.messages.some(
@@ -157,7 +156,6 @@ const IndividualListing: NextPageWithLayout<IndividualListingProps> = ({
 
         {/* Allow adding to favorites if the user isn't the poster of the listing */}
         {session.status === "authenticated" ? (
-          // @ts-expect-error
           session.data?.user?.id !== listingInfo.user.id &&
           (isFavourited ? (
             <UnstyledButton onClick={removeFromFavourites}>

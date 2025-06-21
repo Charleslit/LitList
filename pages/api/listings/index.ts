@@ -4,51 +4,76 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Session, getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]";
 
-async function CreateNewAd(adData: Listing) {
+async function createNewAd(adData: Omit<Listing, "id" | "createdAt" | "updatedAt" | "reported" | "views" | "featured" | "images" | "tags" | "messages" | "favorites" | "userId">, userId: string) {
   try {
+    // Basic validation - consider using a library like Joi for more complex validation
+    if (!adData.name || !adData.location || !adData.categoryId) {
+      throw new Error("Missing required fields: name, location, or categoryId");
+    }
+
     const newAd = await prisma.listing.create({
-      data: adData,
+      data: {
+        ...adData,
+        price: adData.price ? parseInt(String(adData.price), 10) : null,
+        userId: userId, // Ensure userId is correctly passed and used
+      },
     });
     return newAd;
-  } catch (error: any) {
-    throw new Error(error);
+  } catch (error) {
+    // Log the error for server-side debugging
+    console.error("Error in createNewAd:", error);
+    // Re-throw the original error or a new specific error
+    if (error instanceof Error) {
+      throw error; // Re-throw the original error
+    }
+    throw new Error("Failed to create new ad."); // Fallback error
   }
 }
 
 // POST '/api/listings/'
-export default async function Handler(
+export default async function handler( // Renamed Handler to handler (lowercase) for Next.js convention
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   const session: Session | null = await getServerSession(req, res, authOptions);
 
-  if (session) {
-    // POST '/api/listings/'
-    if (req.method === "POST") {
-      console.log("sdfs");
-      // @ts-expect-error - By default, session.user doesn't have ID. I added it using callbacks in `pages/api/auth/[...nextauth.ts]`
-      const userId = session.user?.id;
-      console.log(userId);
-      try {
-        // const adData = {
-        //     userId,
-        //     ...req.body,
-        //     price: parseInt(req.body.price, 10),
-        // };
+  if (!session) {
+    return res.status(401).json({ message: "401 - Not Authorized" });
+  }
 
-        // console.log("Data from server", adData);
-        // const newAd = await CreateNewAd(adData);
+  const userId = session.user?.id; // The @ts-expect-error is removed as types/next-auth.d.ts should now provide the correct type.
 
-        res.status(201);
-      } catch (error: any) {
-        console.error("API error:", error); // Add this line to log the error
-        res.status(500).send({ error: error.message });
-      }
-    } else {
-      res.setHeader("Allow", "POST");
-      res.status(405).end("Method Not Allowed");
+  if (!userId) {
+    return res.status(401).json({ message: "User ID not found in session." });
+  }
+
+  if (req.method === "POST") {
+    try {
+      const { name, description, condition, price, location, categoryId, canDeliver } = req.body;
+
+      // Construct the adData object carefully, ensuring all required fields are present
+      // and types are correct.
+      // Note: 'images' and 'tags' would typically be handled separately,
+      // e.g., by creating Image and Tag records and linking them.
+      // For this fix, I'm assuming a simpler structure based on the current CreateNewAd.
+      const adDataFromRequest: Omit<Listing, "id" | "createdAt" | "updatedAt" | "reported" | "views" | "featured" | "userId" | "images" | "tags" | "messages" | "favorites"> = {
+        name,
+        description,
+        condition, // Assuming this comes in the correct Enum format
+        price, // Will be parsed in createNewAd
+        location,
+        categoryId,
+        canDeliver: !!canDeliver, // Ensure boolean
+      };
+
+      const newAd = await createNewAd(adDataFromRequest, userId);
+      return res.status(201).json(newAd);
+    } catch (error: any) {
+      console.error("API error in POST /api/listings:", error);
+      return res.status(500).json({ message: error.message || "An unexpected error occurred." });
     }
   } else {
-    res.status(401).send("401 - Not Authorized");
+    res.setHeader("Allow", ["POST"]); // Corrected: Allow header takes an array of methods
+    return res.status(405).json({ message: `Method ${req.method} Not Allowed` });
   }
 }

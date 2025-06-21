@@ -1,12 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-};
-
-module.exports = nextConfig;
-
-// CORS
-module.exports = {
   async headers() {
     return [
       {
@@ -14,7 +8,7 @@ module.exports = {
         source: "/api/:path*",
         headers: [
           { key: "Access-Control-Allow-Credentials", value: "true" },
-          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Access-Control-Allow-Origin", value: "*" }, // TODO: Restrict this in production if needed
           {
             key: "Access-Control-Allow-Methods",
             value: "GET,OPTIONS,PATCH,DELETE,POST,PUT",
@@ -28,10 +22,6 @@ module.exports = {
       },
     ];
   },
-};
-
-// Images
-module.exports = {
   images: {
     domains: [
       "i.pravatar.cc",
@@ -39,7 +29,14 @@ module.exports = {
       "cdn.pixabay.com",
       "lh3.googleusercontent.com",
       "media.kijiji.ca",
+      "robohash.org", // Added from remotePatterns
+      "googleusercontent.com", // Added from remotePatterns for consistency
     ],
+    // remotePatterns are the more modern and flexible approach
+    // but since `domains` is already used, I'll consolidate robohash.org here
+    // and keep the other remotePatterns.
+    // It's generally better to use one or the other if possible.
+    // For new entries, remotePatterns is preferred.
     remotePatterns: [
       {
         protocol: "https",
@@ -49,7 +46,7 @@ module.exports = {
       },
       {
         protocol: "https",
-        hostname: "googleusercontent.com",
+        hostname: "googleusercontent.com", // This is broad, consider if specific paths are needed
         port: "",
         pathname: "/**",
       },
@@ -62,3 +59,5 @@ module.exports = {
     ],
   },
 };
+
+module.exports = nextConfig;
