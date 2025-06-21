@@ -16,7 +16,7 @@ generator client {
 model Listing {
   id          String     @id @default(cuid())
   createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @default(now()) @updatedAt
+  updatedAt   DateTime   @updatedAt
   name        String
   description String?
   condition   Condition  @default(NEW)
